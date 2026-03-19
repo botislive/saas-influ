@@ -1,0 +1,3 @@
+sed -i 's/import { cn } from "@\/lib\/utils";/import { cn } from "@\/lib\/utils";\nimport { useRouter } from "next\/navigation";/g' src/components/dashboard/PostPerformanceTable.tsx
+sed -i 's/export function PostPerformanceTable() {/export function PostPerformanceTable() {\n  const router = useRouter();/g' src/components/dashboard/PostPerformanceTable.tsx
+sed -i 's/<tr key={post.id} className="group hover:bg-surface-interactive\/30 transition-colors">/<tr key={post.id} onClick={() => router.push(`\/posts\/${post.id}`)} className="group hover:bg-surface-interactive\/30 transition-colors cursor-pointer">/g' src/components/dashboard/PostPerformanceTable.tsx

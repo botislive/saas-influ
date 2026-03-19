@@ -1,0 +1,1 @@
+sed -i -e "s/<span className=\"font-semibold text-slate-900 text-\[15px\] truncate mb-0.5\">{post.title}<\/span>/<span onClick={() => router.push(\`\/posts\/\${post.id}\`)} className=\"font-semibold text-slate-900 text-\[15px\] truncate mb-0.5 cursor-pointer hover:text-indigo-600 transition-colors\">{post.title}<\/span>/g" src/app/all-posts/page.tsx
