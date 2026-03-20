@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { 
   AreaChart, 
   Area, 
@@ -35,6 +35,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export function AudienceChart() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <Card className="lg:col-span-2 overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -46,40 +52,44 @@ export function AudienceChart() {
         </select>
       </CardHeader>
       <CardContent className="h-[350px] w-full mt-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-accent-primary)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="var(--color-accent-primary)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.05)" strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="day" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: "var(--color-text-tertiary)", fontSize: 12 }}
-              dy={10}
-            />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: "var(--color-text-tertiary)", fontSize: 12 }}
-              tickFormatter={(v) => `${v / 1000}K`}
-            />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(0,0,0,0.1)", strokeWidth: 1 }} />
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke="var(--color-accent-primary)"
-              strokeWidth={3}
-              fillOpacity={1}
-              fill="url(#colorValue)"
-              animationDuration={2000}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        {mounted ? (
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-accent-primary)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--color-accent-primary)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.05)" strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="day" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: "var(--color-text-tertiary)", fontSize: 12 }}
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: "var(--color-text-tertiary)", fontSize: 12 }}
+                tickFormatter={(v) => `${v / 1000}K`}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(0,0,0,0.1)", strokeWidth: 1 }} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="var(--color-accent-primary)"
+                strokeWidth={3}
+                fillOpacity={1}
+                fill="url(#colorValue)"
+                animationDuration={2000}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-full w-full" />
+        )}
       </CardContent>
     </Card>
   );

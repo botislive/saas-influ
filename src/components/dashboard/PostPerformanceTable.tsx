@@ -1,21 +1,45 @@
-"use client";
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-
-const posts = [
-  { id: 1, name: "Amazing-Shirt", date: "16 Dec 2023", quality: 5, potential: "25k-46k", reach: "39,789", status: "Edit" },
-  { id: 2, name: "Best Shoes", date: "15 Dec 2023", quality: 4, potential: "15k-35k", reach: "29,335", status: "Delete" },
-  { id: 3, name: "Iphone Tricks", date: "16 Dec 2023", quality: 5, potential: "9k-16k", reach: "12,590", status: "Edit" },
-  { id: 4, name: "Amazing-Shirt", date: "16 Dec 2023", quality: 4, potential: "25k-46k", reach: "39,789", status: "Delete" },
-  { id: 5, name: "Best Shoes", date: "15 Dec 2023", quality: 5, potential: "15k-35k", reach: "29,335", status: "Edit" },
-];
+import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
 
 export function PostPerformanceTable() {
   const router = useRouter();
+  const [posts, setPosts] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchPosts() {
+      const { data } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (data) setPosts(data);
+
+      const postsSubscription = supabase
+        .channel('posts-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setPosts((prev) => [payload.new, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setPosts((prev) => prev.map(post => post.id === payload.new.id ? payload.new : post));
+          } else if (payload.eventType === 'DELETE') {
+            setPosts((prev) => prev.filter(post => post.id === payload.old.id));
+          }
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(postsSubscription);
+      };
+    }
+
+    fetchPosts();
+  }, []);
+
   return (
     <div className="w-full bg-surface-elevated rounded-[2rem] border border-black/5 overflow-hidden">
       <div className="p-6 border-b border-black/5 flex items-center justify-between">
@@ -48,7 +72,7 @@ export function PostPerformanceTable() {
                   </div>
                 </td>
                 <td className="py-4 px-6">
-                  <span className="text-xs text-text-secondary">{post.date}</span>
+                  <span className="text-xs text-text-secondary">{post.created_at ? format(new Date(post.created_at), 'dd MMM yyyy') : "N/A"}</span>
                 </td>
                 <td className="py-4 px-6">
                   <div className="flex gap-0.5">
@@ -58,10 +82,10 @@ export function PostPerformanceTable() {
                   </div>
                 </td>
                 <td className="py-4 px-6 text-center">
-                  <span className="text-xs text-text-secondary">{post.potential}</span>
+                  <span className="text-xs text-text-secondary">{post.potential_reach}</span>
                 </td>
                 <td className="py-4 px-6 text-center">
-                  <span className="text-xs text-text-primary font-mono">{post.reach}</span>
+                  <span className="text-xs text-text-primary font-mono">{post.actual_reach}</span>
                 </td>
                 <td className="py-4 px-6 text-right">
                   <Badge 

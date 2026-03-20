@@ -4,26 +4,30 @@ import React from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Navbar } from "@/components/Navbar";
 import { MotionWrapper } from "@/components/MotionWrapper";
-import { Plus } from "lucide-react";
+import { Plus, CheckCircle2, Clock3 } from "lucide-react";
 import { motion } from "framer-motion";
+import { createBrowserClient } from "@supabase/ssr";
+import { useEffect, useState, useMemo } from "react";
 
 const ACCOUNTS = [
   {
     id: "fb-page",
     name: "Facebook Page",
+    platform: "meta",
     icon: "https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg",
   },
   {
     id: "li-page",
-    name: "Facebook Page", // Intentional duplicate based on screenshot visually
-    realName: "LinkedIn Page",
+    name: "LinkedIn Page",
+    platform: "linkedin",
     icon: "https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png",
   },
   {
     id: "tw-page",
-    name: "Facebook Page", // Intentional duplicate based on screenshot visually
-    realName: "Twitter Page",
+    name: "Twitter (X) Page",
+    platform: "twitter",
     icon: "https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg",
+    comingSoon: true,
   },
   {
     id: "gmb-page",
@@ -33,6 +37,7 @@ const ACCOUNTS = [
   {
     id: "ig-page",
     name: "Instagram Page",
+    platform: "meta",
     icon: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg",
   },
   {
@@ -43,6 +48,41 @@ const ACCOUNTS = [
 ];
 
 export default function ConnectAccounts() {
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  
+  const supabase = useMemo(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ), []);
+
+  const fetchAccounts = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("accounts")
+      .select("platform")
+      .eq("user_id", user.id);
+
+    if (data && !error) {
+      setConnectedPlatforms(data.map((a: any) => a.platform));
+    }
+  };
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const handleConnect = (platform?: string) => {
+    if (platform === "twitter") return;
+
+    if (connectedPlatforms.includes(platform as string)) return;
+
+    if (platform) {
+      window.location.href = `/api/auth/${platform}`;
+    }
+  };
+
   return (
     <MotionWrapper>
       <div className="flex min-h-screen bg-[#F8FAFC] text-text-primary overflow-x-hidden antialiased">
@@ -65,8 +105,23 @@ export default function ConnectAccounts() {
             {/* Grid Area */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {ACCOUNTS.map((account, i) => (
-                <motion.button
+                (() => {
+                  const isComingSoon = account.comingSoon === true;
+                  const isConnected = !isComingSoon && connectedPlatforms.includes(account.platform as string);
+                  return (
+                <motion.div
                   key={account.id}
+                  onClick={() => {
+                    if (!isComingSoon) handleConnect(account.platform);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (!isComingSoon) handleConnect(account.platform);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ 
@@ -74,9 +129,9 @@ export default function ConnectAccounts() {
                     duration: 0.25, 
                     ease: [0.4, 0, 0.2, 1] 
                   }}
-                  whileHover={{ y: -2, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)" }}
+                  whileHover={isComingSoon ? undefined : { y: -2, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)" }}
                   whileTap={{ scale: 0.98 }}
-                  className="group relative flex flex-col items-start p-6 bg-white border border-slate-200 rounded-2xl transition-all duration-200 text-left overflow-hidden before:absolute before:inset-0 before:bg-slate-50/50 before:opacity-0 hover:before:opacity-100 before:transition-opacity before:z-0"
+                  className={`group relative flex flex-col items-start p-6 bg-white border border-slate-200 rounded-2xl transition-all duration-200 text-left overflow-hidden before:absolute before:inset-0 before:bg-slate-50/50 before:opacity-0 before:transition-opacity before:z-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ${isComingSoon ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:before:opacity-100"}`}
                 >
                   <div className="relative z-10 flex justify-between items-start w-full mb-8">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent shrink-0">
@@ -91,16 +146,49 @@ export default function ConnectAccounts() {
                       />
                     </div>
                     
-                    {/* Plus Icon - matching screenshot */}
-                    <div className="text-slate-400 group-hover:text-slate-900 transition-colors pt-1">
-                      <Plus className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                    {/* Connection Indicator */}
+                    <div className="pt-1">
+                      {isComingSoon ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="flex items-center gap-1 px-2 py-1 bg-amber-50 rounded-full border border-amber-100"
+                        >
+                          <Clock3 className="w-3.5 h-3.5 text-amber-500" strokeWidth={2.5} />
+                          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-tight">Soon</span>
+                        </motion.div>
+                      ) : isConnected ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="flex items-center gap-1 px-2 py-1 bg-green-50 rounded-full border border-green-100"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" strokeWidth={3} />
+                          <span className="text-[10px] font-bold text-green-600 uppercase tracking-tight">Verified</span>
+                        </motion.div>
+                      ) : (
+                        <div className="text-slate-400 group-hover:text-slate-900 transition-colors">
+                          <Plus className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                        </div>
+                      )}
                     </div>
                   </div>
                   
-                  <span className="relative z-10 text-[14px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
-                    {account.realName || account.name}
-                  </span>
-                </motion.button>
+                  <div className="relative z-10 flex flex-col items-start gap-1">
+                    <span className="text-[14px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+                      {account.name}
+                    </span>
+                    {isComingSoon ? (
+                      <span className="text-[11px] text-amber-700 font-medium">Coming Soon</span>
+                    ) : isConnected ? (
+                      <div className="flex flex-col items-start">
+                        <span className="text-[11px] text-slate-400">Connected</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </motion.div>
+                  );
+                })()
               ))}
             </div>
 

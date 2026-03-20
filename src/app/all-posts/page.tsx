@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { MotionWrapper } from "@/components/MotionWrapper";
+import { PostModal } from "@/components/PostModal";
+import { getPosts, deletePost, createPost, updatePost, Post, Platform, PostStatus } from "@/lib/posts";
 import { 
   Search, 
   MoreVertical, 
@@ -98,7 +100,66 @@ const MINI_CHART_DATA = [
 
 export default function AllPosts() {
   const router = useRouter();
-  const [posts, setPosts] = useState(POSTS_DATA);
+  const [posts, setPosts] = useState<(Post & { selected?: boolean })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [selectedPost, setSelectedPost] = useState<Post | undefined>(undefined);
+
+  const fetchPosts = async () => {
+    setIsLoading(true);
+    const { data, error } = await getPosts();
+    if (data) {
+      setPosts(data.map(p => ({ ...p, selected: false })));
+    } else {
+      console.error(error);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const handlePostSubmit = async (data: Partial<Post>) => {
+    if (modalMode === "create") {
+      await createPost(data as any);
+    } else if (modalMode === "edit" && selectedPost) {
+      await updatePost(selectedPost.id, data);
+    }
+    await fetchPosts();
+  };
+
+  const handleCreateClick = () => {
+    setModalMode("create");
+    setSelectedPost(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEditClick = (post: Post) => {
+    setSelectedPost(post);
+    setModalMode("edit");
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this post?")) {
+      await deletePost(id);
+      await fetchPosts();
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete the selected posts?")) return;
+    const selectedIds = posts.filter(p => p.selected).map(p => p.id);
+    for (const id of selectedIds) {
+      await deletePost(id);
+    }
+    await fetchPosts();
+  };
+
   const selectedCount = posts.filter(p => p.selected).length;
   const isAllSelected = posts.length > 0 && selectedCount === posts.length;
 
@@ -129,7 +190,7 @@ export default function AllPosts() {
 
             {/* Actions Bar */}
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-              <Button className="h-11 rounded-full bg-slate-900 px-5 text-sm font-semibold tracking-[0.01em] text-white shadow-[0_10px_20px_rgba(15,23,42,0.2)] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-slate-800 active:scale-[0.98]">
+              <Button onClick={handleCreateClick} className="h-11 rounded-full bg-slate-900 px-5 text-sm font-semibold tracking-[0.01em] text-white shadow-[0_10px_20px_rgba(15,23,42,0.2)] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-slate-800 active:scale-[0.98]">
                 Post +
               </Button>
               
@@ -257,16 +318,16 @@ export default function AllPosts() {
                           <td className="px-6 py-5 align-middle">
                             <div className="flex items-center gap-4">
                               <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-200 flex-shrink-0 shadow-sm bg-slate-100">
-                                <img src={post.authorAvatar} alt={post.author} className="w-full h-full object-cover" />
+                                <img src={`https://i.pravatar.cc/150?u=${post.id}`} alt="Author" className="w-full h-full object-cover" />
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span onClick={() => router.push(`/posts/${post.id}`)} className="font-semibold text-slate-900 text-[15px] truncate mb-0.5 cursor-pointer hover:text-indigo-600 transition-colors">{post.title}</span>
-                                <span className="text-[13px] text-slate-500 truncate">{post.platform} • {post.author}</span>
+                                <span className="text-[13px] text-slate-500 truncate">{post.platform}</span>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-5 align-middle text-[14px] text-slate-500 font-mono">{post.id}</td>
-                          <td className="px-6 py-5 align-middle font-semibold text-slate-900 text-[14px]">{post.price}</td>
+                          <td className="px-6 py-5 align-middle text-[14px] text-slate-500 font-mono">{post.id.slice(0, 8)}</td>
+                          <td className="px-6 py-5 align-middle font-semibold text-slate-900 text-[14px]">{post.platform.slice(0,2).toUpperCase()}</td>
                           <td className="px-6 py-5 align-middle text-[14px] text-slate-600">{post.revenue}</td>
                           <td className="px-6 py-5 align-middle text-[14px] text-slate-600">{post.sales}</td>
                           <td className="px-6 py-5 align-middle text-[14px] text-slate-600">{post.stock}</td>
@@ -287,9 +348,14 @@ export default function AllPosts() {
                             </Badge>
                           </td>
                           <td className="px-6 py-5 align-middle text-right">
-                            <button className="rounded-lg p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700">
-                              <MoreVertical className="w-[18px] h-[18px]" />
-                            </button>
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => handleEditClick(post)} className="rounded-lg p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700" title="Edit">
+                                <Pencil className="w-[18px] h-[18px]" />
+                              </button>
+                              <button onClick={() => handleDeleteClick(post.id)} className="rounded-lg p-1.5 text-red-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-700" title="Delete">
+                                <Trash2 className="w-[18px] h-[18px]" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )) : (
@@ -349,7 +415,7 @@ export default function AllPosts() {
                                 </button>
                             </div>
                             <div className="w-[1px] h-6 bg-slate-200" />
-                            <button className="group flex items-center gap-2 rounded-full px-5 py-2 text-[14px] font-semibold text-red-600 transition-colors duration-200 hover:bg-red-50 active:scale-[0.98]">
+                            <button onClick={handleBulkDelete} className="group flex items-center gap-2 rounded-full px-5 py-2 text-[14px] font-semibold text-red-600 transition-colors duration-200 hover:bg-red-50 active:scale-[0.98]">
                                 <Trash2 className="w-[18px] h-[18px] transition-transform group-hover:scale-110" /> Delete
                             </button>
                         </motion.div>
@@ -360,6 +426,14 @@ export default function AllPosts() {
 
           </div>
         </main>
+        
+        <PostModal 
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          mode={modalMode}
+          initialData={selectedPost}
+          onSubmit={handlePostSubmit}
+        />
       </div>
     </MotionWrapper>
   );

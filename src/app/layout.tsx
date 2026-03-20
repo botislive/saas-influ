@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Dashboard layout example",
 };
 
+import { AuthProvider } from "@/components/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,8 +30,10 @@ export default function RootLayout({
       className={`${outfit.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans">
-        <div className="noise-overlay" />
-        {children}
+        <AuthProvider>
+          <div className="noise-overlay" />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

@@ -5,7 +5,12 @@ import { Search, Bell, Megaphone, ChevronDown, User } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
+import { useAuth } from "@/components/AuthContext";
+
 export function Navbar() {
+  const { user, signOut } = useAuth();
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "User";
+
   return (
     <header className="fixed top-0 right-0 left-[280px] z-30 h-16 border-b border-black/5 bg-background-primary/80 backdrop-blur-md flex items-center justify-between px-8">
       {/* Title */}
@@ -38,16 +43,25 @@ export function Navbar() {
           </Button>
         </div>
         
-        <button className="flex items-center gap-3 p-1 rounded-xl hover:bg-surface-interactive/50 transition-all group">
-          <div className="h-8 w-8 rounded-lg bg-surface-elevated border border-black/10 flex items-center justify-center overflow-hidden">
-            <img src="https://i.pravatar.cc/150?u=easton" alt="Easton Cox" className="h-full w-full object-cover" />
-          </div>
-          <div className="flex flex-col items-start sr-only sm:not-sr-only">
-            <span className="text-sm font-medium text-text-primary">Easton Cox</span>
-            <span className="text-[10px] text-text-tertiary">Creator Pro</span>
-          </div>
-          <ChevronDown className="h-4 w-4 text-text-tertiary group-hover:text-text-primary transition-all" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-3 p-1 rounded-xl hover:bg-surface-interactive/50 transition-all group">
+            <div className="h-8 w-8 rounded-lg bg-surface-elevated border border-black/10 flex items-center justify-center overflow-hidden">
+              <img 
+                src={user?.user_metadata?.avatar_url || `https://i.pravatar.cc/150?u=${user?.id || 'default'}`} 
+                alt={userName} 
+                className="h-full w-full object-cover" 
+              />
+            </div>
+            <div className="flex flex-col items-start sr-only sm:not-sr-only">
+              <span className="text-sm font-medium text-text-primary">{userName}</span>
+              <span className="text-[10px] text-text-tertiary">Creator Pro</span>
+            </div>
+          </button>
+          
+          <Button variant="ghost" size="sm" onClick={() => signOut()} className="text-xs text-slate-500 hover:text-red-600 transition-colors">
+            Sign Out
+          </Button>
+        </div>
       </div>
     </header>
   );

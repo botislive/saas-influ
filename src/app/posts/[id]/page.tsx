@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Navbar } from "@/components/Navbar";
 import { MotionWrapper } from "@/components/MotionWrapper";
 import { Button } from "@/components/ui/Button";
-import { X, Download } from "lucide-react";
+import { X, Download, Star } from "lucide-react";
+import { getPostById, Post } from "@/lib/posts";
 import { 
   AreaChart, 
   Area, 
@@ -53,7 +54,36 @@ const ENGAGEMENT_DATA = [
 
 export default function PostDetailsPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const [activeTab, setActiveTab] = useState("Likes");
+  const [post, setPost] = useState<Post | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      getPostById(id).then(({ data }) => {
+        if (data) setPost(data);
+        setIsLoading(false);
+      });
+    }
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="text-slate-500 animate-pulse">Loading post details...</div>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="text-slate-500">Post not found.</div>
+      </div>
+    );
+  }
 
   return (
     <MotionWrapper>
@@ -69,7 +99,7 @@ export default function PostDetailsPage() {
               <div className="flex items-center gap-3">
                 <div className="w-4 h-8 bg-indigo-300 rounded-sm" />
                 <h1 className="text-[24px] font-bold tracking-tight text-slate-900">
-                  Post Performance Details
+                  {post.title}
                 </h1>
               </div>
               <button 
@@ -88,7 +118,8 @@ export default function PostDetailsPage() {
                 {/* Text Content */}
                 <div className="flex-1 space-y-5">
                   <p className="text-[15px] leading-[1.6] text-slate-800 tracking-[-0.01em]">
-                    <strong>Hello Folks👋</strong><br/>
+                    <strong>Platform: {post.platform}</strong><br/>
+                    <strong>Status: {post.status}</strong><br/>
                     -<br/>
                     We are exploring some of the widgets. It's a Part Of our UI KIT that we are working on for a few months. We will release it soon.<br/>
                     <br/>
@@ -99,8 +130,31 @@ export default function PostDetailsPage() {
                   <p className="text-[14px] leading-[1.6] text-slate-500 font-medium">
                     #ui #ux #uidesigner #uxdesigner #webdesign #appdesign #webui #appui #interface #design #userinterface #inspiration #Dribbble #Behance #adobeXD #figma #sketch #interfacely #uxswipe #uxbuzz #uxbucket #uixnerd #uiuxbunke
                   </p>
+                  
+                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+                    <div>
+                      <div className="text-xs text-slate-400 font-medium uppercase">Likes</div>
+                      <div className="text-xl font-bold text-slate-900">{post.revenue}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-400 font-medium uppercase">Comments</div>
+                      <div className="text-xl font-bold text-slate-900">{post.sales}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-400 font-medium uppercase">Shares</div>
+                      <div className="text-xl font-bold text-slate-900">{post.stock}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-1 items-center pt-2">
+                    <span className="text-sm font-medium text-slate-600 mr-2">Rating ({post.rating})</span>
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-4 h-4 ${i < post.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
+                    ))}
+                  </div>
+
                   <p className="text-[12px] text-slate-400 font-medium uppercase tracking-wider pt-2">
-                    Posted on 9 Mar, 2023 - 11:30 AM
+                    Posted on {new Date(post.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
 
@@ -176,7 +230,7 @@ export default function PostDetailsPage() {
                   </div>
                   
                   <div className="flex-1 w-full -ml-4">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                       <AreaChart data={REACH_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
@@ -252,7 +306,7 @@ export default function PostDetailsPage() {
                   </div>
 
                   <div className="flex-1 w-full -ml-4">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                       <AreaChart data={ENGAGEMENT_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
